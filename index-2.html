@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="ha">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoClip — Gwaji na gida</title>
+<style>
+  :root {
+    --bg: #15161B;
+    --panel: #1D1F26;
+    --panel-2: #24262F;
+    --line: #32343F;
+    --text: #EDEDF0;
+    --muted: #9296A6;
+    --accent: #E8A33D;
+    --accent-dim: #6b5527;
+    --good: #6FCF97;
+    --bad: #f2a3a3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
+  header { margin-bottom: 36px; }
+  header .mark {
+    display: inline-block;
+    width: 10px; height: 10px;
+    background: var(--accent);
+    margin-right: 10px;
+    transform: rotate(45deg);
+  }
+  h1 { font-size: 1.5rem; font-weight: 650; margin: 0 0 6px; letter-spacing: -0.01em; }
+  header p { color: var(--muted); margin: 0; font-size: 0.95rem; }
+
+  form {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 28px;
+  }
+  .field { margin-bottom: 20px; }
+  .field:last-child { margin-bottom: 0; }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 8px; }
+  input[type="file"], input[type="password"], input[type="number"], select {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .row { display: flex; gap: 16px; }
+  .row .field { flex: 1; }
+  .hint { color: var(--muted); font-size: 0.8rem; margin-top: 6px; }
+
+  button {
+    width: 100%;
+    background: var(--accent);
+    color: #1A1300;
+    border: none;
+    padding: 13px 16px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 650;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  button:hover { filter: brightness(1.06); }
+  button:disabled { background: var(--accent-dim); color: var(--muted); cursor: not-allowed; }
+
+  #progress-box {
+    margin-top: 22px;
+    padding: 18px 18px 20px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    display: none;
+  }
+  #progress-box.show { display: block; }
+  #progress-box.error { border-color: #7a3b3b; }
+
+  .progress-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+  }
+  #stage-text { color: var(--text); }
+  #percent-text { color: var(--accent); font-weight: 700; }
+
+  .bar-track {
+    width: 100%;
+    height: 8px;
+    background: var(--panel-2);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 999px;
+    transition: width 0.4s ease;
+  }
+  .error-text { color: var(--bad); font-size: 0.9rem; margin-top: 10px; }
+
+  #results { margin-top: 28px; display: none; }
+  #results.show { display: block; }
+  #results h2 { font-size: 1.05rem; margin: 0 0 14px; }
+
+  .clip {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 14px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .clip video { width: 160px; border-radius: 6px; background: #000; flex-shrink: 0; }
+  .clip .meta { flex: 1; min-width: 0; }
+  .clip .score {
+    display: inline-block;
+    background: var(--panel-2);
+    color: var(--good);
+    font-size: 0.75rem;
+    font-weight: 650;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+  }
+  .clip .title { font-weight: 600; margin: 0 0 4px; }
+  .clip .time { color: var(--muted); font-size: 0.82rem; margin: 0 0 6px; }
+  .clip .reason { color: var(--muted); font-size: 0.85rem; margin: 0 0 10px; }
+  .clip a.download {
+    color: var(--accent);
+    font-size: 0.85rem;
+    text-decoration: none;
+    border: 1px solid var(--accent-dim);
+    padding: 5px 10px;
+    border-radius: 5px;
+  }
+  .clip a.download:hover { background: var(--accent-dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="mark"></span>AutoClip — Gwaji na gida</h1>
+    <p>Loda bidiyo, sannan ka duba matakin aikin nan take, ka duba/download clips da aka samu.</p>
+  </header>
+
+  <form id="clip-form">
+    <div class="field">
+      <label for="video">Bidiyo</label>
+      <input type="file" id="video" name="video" accept="video/*" required>
+      <div class="hint">mp4, mov, mkv da sauransu. Gajerun bidiyo (kasa da minti 10) sun fi sauri domin gwaji na farko.</div>
+    </div>
+
+    <div class="field">
+      <label for="api_key">OpenAI API Key</label>
+      <input type="password" id="api_key" name="api_key" placeholder="sk-... (in ba a saita OPENAI_API_KEY a server ba)">
+      <div class="hint">Idan an riga an saita OPENAI_API_KEY a server, za ka iya barin wannan fanko.</div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="category">Nau'in bidiyo</label>
+        <select id="category" name="category">
+          {% for c in categories %}
+          <option value="{{ c }}" {% if c == 'default' %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="min_score">Min score (0 zuwa 1)</label>
+        <input type="number" id="min_score" name="min_score" value="0.7" min="0" max="1" step="0.05">
+      </div>
+    </div>
+
+    <button type="submit" id="submit-btn">Fara sarrafa bidiyo</button>
+  </form>
+
+  <div id="progress-box">
+    <div class="progress-top">
+      <span id="stage-text">A layi...</span>
+      <span id="percent-text">0%</span>
+    </div>
+    <div class="bar-track">
+      <div class="bar-fill" id="bar-fill"></div>
+    </div>
+    <div class="error-text" id="error-text" style="display:none;"></div>
+  </div>
+
+  <div id="results">
+    <h2>Clips da aka samu</h2>
+    <div id="clip-list"></div>
+  </div>
+</div>
+
+<script>
+var form = document.getElementById("clip-form");
+var submitBtn = document.getElementById("submit-btn");
+var progressBox = document.getElementById("progress-box");
+var stageText = document.getElementById("stage-text");
+var percentText = document.getElementById("percent-text");
+var barFill = document.getElementById("bar-fill");
+var errorText = document.getElementById("error-text");
+var resultsEl = document.getElementById("results");
+var clipListEl = document.getElementById("clip-list");
+
+var pollTimer = null;
+
+function escapeHtml(s) {
+  var d = document.createElement("div");
+  d.textContent = s || "";
+  return d.innerHTML;
+}
+
+function resetProgressUI() {
+  progressBox.className = "show";
+  errorText.style.display = "none";
+  errorText.textContent = "";
+  stageText.textContent = "A layi...";
+  percentText.textContent = "0%";
+  barFill.style.width = "0%";
+  resultsEl.classList.remove("show");
+  clipListEl.innerHTML = "";
+}
+
+function showError(msg) {
+  progressBox.className = "show error";
+  errorText.style.display = "block";
+  errorText.textContent = "Kuskure: " + msg;
+  submitBtn.disabled = false;
+}
+
+function renderClips(result) {
+  clipListEl.innerHTML = "";
+  result.clips.forEach(function (c, i) {
+    var div = document.createElement("div");
+    div.className = "clip";
+    div.innerHTML =
+      '<video src="' + c.url + '" controls preload="metadata"></video>' +
+      '<div class="meta">' +
+      '<span class="score">' + Math.round(c.score * 100) + '</span>' +
+      '<p class="title">' + (i + 1) + '. ' + escapeHtml(c.title) + '</p>' +
+      '<p class="time">' + c.start_time + ' zuwa ' + c.end_time + '</p>' +
+      '<p class="reason">' + escapeHtml(c.reason) + '</p>' +
+      '<a class="download" href="' + c.url + '" download>Download</a>' +
+      '</div>';
+    clipListEl.appendChild(div);
+  });
+  resultsEl.classList.add("show");
+}
+
+function poll(jobId) {
+  pollTimer = setInterval(function () {
+    fetch("/api/status/" + jobId)
+      .then(function (res) { return res.json(); })
+      .then(function (job) {
+        if (job.error) {
+          throw new Error(job.error);
+        }
+        var pct = job.progress || 0;
+        stageText.textContent = job.stage || "Ana aiki...";
+        percentText.textContent = pct + "%";
+        barFill.style.width = pct + "%";
+
+        if (job.status === "done") {
+          clearInterval(pollTimer);
+          submitBtn.disabled = false;
+          stageText.textContent = "An gama - " + job.result.clips.length + " clips";
+          renderClips(job.result);
+        } else if (job.status === "error") {
+          clearInterval(pollTimer);
+          showError(job.error || "Wani abu ya kuskure");
+        }
+      })
+      .catch(function (err) {
+        clearInterval(pollTimer);
+        showError(err.message);
+      });
+  }, 1500);
+}
+
+form.addEventListener("submit", function (e) {
+  e.preventDefault();
+  submitBtn.disabled = true;
+  resetProgressUI();
+
+  var formData = new FormData(form);
+
+  fetch("/api/start", { method: "POST", body: formData })
+    .then(function (res) {
+      return res.json().then(function (data) {
+        if (!res.ok) { throw new Error(data.error || "Wani abu ya kuskure"); }
+        return data;
+      });
+    })
+    .then(function (data) {
+      poll(data.job_id);
+    })
+    .catch(function (err) {
+      showError(err.message);
+    });
+});
+</script>
+</body>
+</html>
